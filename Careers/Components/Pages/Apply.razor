@@ -1,0 +1,131 @@
+@page "/jobs/{Id}/apply"
+@inject ICareersStore Store
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>Apply · AZPCloud</PageTitle>
+
+@if (_position is null)
+{
+    <h1>Position not found</h1>
+    <p><a href="/">Back to open positions</a></p>
+}
+else if (_existing is not null)
+{
+    <h1>@_position.Title</h1>
+    <p class="card">You applied on @_existing.SubmittedAt.ToLocalTime().ToString("MMMM d, yyyy").</p>
+    <p><a href="/jobs/@Id">Back to the position</a></p>
+}
+else if (_position.Status != PositionStatus.Open)
+{
+    <h1>@_position.Title</h1>
+    <p>This position is not accepting applications.</p>
+    <p><a href="/jobs/@Id">Back to the position</a></p>
+}
+else
+{
+    <h1>Apply for @_position.Title</h1>
+    <p class="lead">Answer the screening questions, attach your resume, and sign.</p>
+    @if (_error is not null)
+    {
+        <p class="error">@_error</p>
+    }
+
+    <form class="stack" method="post" action="/jobs/@Id/apply/submit" enctype="multipart/form-data" data-enhance="false">
+        <AntiforgeryToken />
+        @foreach (var question in _position.Questions)
+        {
+            var fieldId = $"q-{question.Id}";
+            <div class="field">
+                <label for="@fieldId">
+                    @question.Label
+                    @if (question.Required)
+                    {
+                        <span aria-hidden="true"> *</span>
+                    }
+                </label>
+                @if (question.Type == QuestionType.LongText)
+                {
+                    <textarea id="@fieldId" name="answers[@question.Id]" required="@question.Required"></textarea>
+                }
+                else if (question.Type == QuestionType.Dropdown)
+                {
+                    <select id="@fieldId" name="answers[@question.Id]" required="@question.Required">
+                        <option value="">Choose one</option>
+                        @foreach (var option in question.Options)
+                        {
+                            <option value="@option">@option</option>
+                        }
+                    </select>
+                }
+                else if (question.Type == QuestionType.YesNo)
+                {
+                    <select id="@fieldId" name="answers[@question.Id]" required="@question.Required">
+                        <option value="">Choose one</option>
+                        <option>Yes</option>
+                        <option>No</option>
+                    </select>
+                }
+                else
+                {
+                    <input id="@fieldId" name="answers[@question.Id]" required="@question.Required" />
+                }
+            </div>
+        }
+
+        <label>
+            Resume
+            <input type="file" name="resume" accept=".pdf,.doc,.docx,application/pdf" required />
+        </label>
+        <p class="muted">PDF or Word, up to 5 MB.</p>
+
+        <label class="check">
+            <input type="checkbox" name="attested" value="true" required />
+            <span>I attest that my resume and these answers are true and complete.</span>
+        </label>
+
+        <label>
+            Electronic signature
+            <input name="signatureName" autocomplete="name" required maxlength="200" placeholder="Type your legal name" />
+        </label>
+
+        <button type="submit">Submit application</button>
+    </form>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }
+
+    private Position? _position;
+    private JobApplication? _existing;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        _position = Store.FindPosition(Id);
+        var http = HttpContextAccessor.HttpContext;
+        if (_position is null)
+        {
+            if (http is not null)
+                http.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        var userId = http?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId is null)
+        {
+            HttpContextAccessor.HttpContext?.Response.Redirect($"/account/login?returnUrl=/jobs/{Uri.EscapeDataString(Id)}/apply");
+            return;
+        }
+
+        _existing = Store.FindApplication(userId, Id);
+        _error = Error switch
+        {
+            "resume" => "Upload a PDF or Word resume, 5 MB or smaller.",
+            "required" => "Answer the required questions, check the attestation, and type your name.",
+            "closed" => "This position is not accepting applications.",
+            _ => null
+        };
+    }
+}

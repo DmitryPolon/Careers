@@ -1,0 +1,142 @@
+@page "/admin/admins"
+@attribute [Authorize(Roles = "Admin")]
+@inject ICareersStore Store
+@inject IHttpContextAccessor HttpContextAccessor
+@inject Microsoft.AspNetCore.Identity.PasswordHasher<UserAccount> Passwords
+@inject Microsoft.Extensions.Options.IOptions<MailSettings> Mail
+
+<PageTitle>Administrators · AZPCloud Careers</PageTitle>
+
+<h1>Administrators</h1>
+<p class="lead">Add people who can manage positions, and choose which addresses receive each application PDF and resume.</p>
+
+@if (Mail.Value.IsReady)
+{
+    <p class="muted">Checked addresses receive each application PDF and resume by email.</p>
+}
+else if (OutlookMailbox.IsAvailable)
+{
+    <p class="muted">Checked addresses receive each application PDF and resume through Outlook.</p>
+}
+else
+{
+    <p class="muted">Mail delivery is not connected yet. Checked addresses are saved. The PDF stays on the server until Outlook is available or SMTP is set in the server settings.</p>
+}
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <p class="error">@_message</p>
+}
+
+<EditForm class="card stack" Model="Input" FormName="add-admin" OnValidSubmit="AddAdmin" Enhance="false">
+    <DataAnnotationsValidator />
+    <h2>Add an administrator</h2>
+    <label>
+        Email
+        <InputText @bind-Value="Input.Email" autocomplete="email" />
+    </label>
+    <ValidationMessage For="() => Input.Email" />
+    <label>
+        Password
+        <InputText type="password" @bind-Value="Input.Password" autocomplete="new-password" />
+    </label>
+    <ValidationMessage For="() => Input.Password" />
+    <label>
+        Confirm password
+        <InputText type="password" @bind-Value="Input.ConfirmPassword" autocomplete="new-password" />
+    </label>
+    <ValidationMessage For="() => Input.ConfirmPassword" />
+    <label class="check">
+        <input type="checkbox" name="receives" value="true" checked="@Input.ReceivesApplications" />
+        <span>Email application PDFs to this address</span>
+    </label>
+    <button type="submit">Add administrator</button>
+</EditForm>
+
+<h2>Current administrators</h2>
+@if (_admins.Count == 0)
+{
+    <p>No administrators yet.</p>
+}
+else
+{
+    <ul class="jobs">
+        @foreach (var admin in _admins)
+        {
+            <li class="card row-actions">
+                <div>
+                    <strong>@admin.Email</strong>
+                    <p class="muted">@(admin.ReceivesApplications ? "Receives application PDFs" : "Does not receive PDFs")</p>
+                </div>
+                <form method="post" action="/admin/admins/@admin.Id/notifications" data-enhance="false">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="receives" value="@(admin.ReceivesApplications ? "false" : "true")" />
+                    <button type="submit" class="secondary">@(admin.ReceivesApplications ? "Stop PDF email" : "Email PDFs here")</button>
+                </form>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private AddAdminInput? _input;
+
+    [SupplyParameterFromForm(FormName = "add-admin")]
+    private AddAdminInput Input
+    {
+        get => _input ??= new();
+        set => _input = value;
+    }
+
+    private IReadOnlyList<UserAccount> _admins = [];
+    private string? _message;
+
+    protected override void OnInitialized()
+    {
+        _admins = Store.Admins();
+        var http = HttpContextAccessor.HttpContext;
+        if (http is not null && HttpMethods.IsPost(http.Request.Method))
+            Input.ReceivesApplications = string.Equals(http.Request.Form["receives"], "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void AddAdmin()
+    {
+        if (!string.Equals(Input.Password, Input.ConfirmPassword, StringComparison.Ordinal))
+        {
+            _message = "The passwords do not match.";
+            return;
+        }
+
+        var email = Input.Email.Trim().ToLowerInvariant();
+        var user = new UserAccount
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Email = email,
+            Role = "Admin",
+            ReceivesApplications = Input.ReceivesApplications,
+            CreatedAt = DateTime.UtcNow
+        };
+        user.PasswordHash = Passwords.HashPassword(user, Input.Password);
+        if (!Store.AddUser(user))
+        {
+            _message = "That email already has an account.";
+            return;
+        }
+
+        HttpContextAccessor.HttpContext!.Response.Redirect("/admin/admins");
+    }
+
+    private sealed class AddAdminInput
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required, MinLength(8, ErrorMessage = "Use at least 8 characters.")]
+        public string Password { get; set; } = "";
+
+        [Required]
+        public string ConfirmPassword { get; set; } = "";
+
+        public bool ReceivesApplications { get; set; } = true;
+    }
+}

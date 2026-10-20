@@ -1,0 +1,61 @@
+@page "/jobs/{Id}"
+@inject ICareersStore Store
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>@(_position?.Title ?? "Position") · AZPCloud</PageTitle>
+
+@if (_position is null)
+{
+    <h1>Position not found</h1>
+    <p><a href="/">Back to open positions</a></p>
+}
+else
+{
+    <h1>@_position.Title</h1>
+    <p class="lead">@_position.Summary</p>
+    @if (_position.Status != PositionStatus.Open)
+    {
+        <p class="pill @_position.Status.ToString().ToLowerInvariant()">@_position.Status</p>
+        <p>This position is not accepting applications.</p>
+    }
+    <div class="description">@_position.Description</div>
+    @if (_application is not null || _justApplied)
+    {
+        <p class="card">You applied@(AppliedOn).</p>
+    }
+    else if (_position.Status == PositionStatus.Open)
+    {
+        <a class="button" href="@ApplyHref">Apply</a>
+    }
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    [SupplyParameterFromQuery(Name = "applied")] public string? Applied { get; set; }
+
+    private Position? _position;
+    private JobApplication? _application;
+    private bool _justApplied;
+    private string ApplyHref => $"/jobs/{Id}/apply";
+    private string AppliedOn => _application is null
+        ? ""
+        : $" on {_application.SubmittedAt.ToLocalTime():MMMM d, yyyy}";
+
+    protected override void OnInitialized()
+    {
+        _position = Store.FindPosition(Id);
+        if (_position is null)
+        {
+            if (HttpContextAccessor.HttpContext is { } http)
+                http.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        var userId = HttpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId is not null)
+            _application = Store.FindApplication(userId, Id);
+
+        _justApplied = _application is null && Applied == "1";
+    }
+}

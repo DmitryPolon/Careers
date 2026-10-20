@@ -1,0 +1,154 @@
+@page "/admin/edit"
+@page "/admin/edit/{Id}"
+@attribute [Authorize(Roles = "Admin")]
+@inject ICareersStore Store
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>@(Existing ? "Edit position" : "New position") · AZPCloud</PageTitle>
+
+<h1>@(Existing ? "Edit position" : "New position")</h1>
+
+@if (Uploaded == "1")
+{
+    <p class="card">The document was read. This position is on hold, so the public list does not show it yet. The description is what applicants see. The questions below become the form after they apply. Set the status to Open when it looks right.</p>
+}
+
+@foreach (var error in _errors)
+{
+    <p class="error">@error</p>
+}
+
+@if (Draft is not null)
+{
+    <EditForm class="stack" Model="Draft" FormName="position" OnSubmit="Save" Enhance="false">
+        <button class="hidden" type="submit" name="Intent" value="save">Save position</button>
+        <label>
+            Title
+            <InputText @bind-Value="Draft.Title" />
+        </label>
+        <label>
+            Summary
+            <InputText @bind-Value="Draft.Summary" />
+        </label>
+        <label>
+            Description
+            <InputTextArea @bind-Value="Draft.Description" />
+        </label>
+        <label>
+            Status
+            <InputSelect @bind-Value="Draft.Status">
+                <option value="@PositionStatus.Open">Open</option>
+                <option value="@PositionStatus.Hold">Hold</option>
+                <option value="@PositionStatus.Closed">Closed</option>
+            </InputSelect>
+        </label>
+
+        <h2>Screening questions</h2>
+        <p class="muted">These stay off the public page. Applicants see them after they choose Apply.</p>
+
+        @for (var i = 0; i < Draft.Questions.Count; i++)
+        {
+            var index = i;
+            <fieldset class="question card">
+                <InputText type="hidden" @bind-Value="Draft.Questions[index].Id" />
+                <label>
+                    Label
+                    <InputText @bind-Value="Draft.Questions[index].Label" />
+                </label>
+                <label>
+                    Control
+                    <InputSelect @bind-Value="Draft.Questions[index].Type">
+                        <option value="@QuestionType.ShortText">Short text</option>
+                        <option value="@QuestionType.LongText">Long text</option>
+                        <option value="@QuestionType.Dropdown">Dropdown</option>
+                        <option value="@QuestionType.YesNo">Yes / No</option>
+                    </InputSelect>
+                </label>
+                <label class="check">
+                    <InputCheckbox @bind-Value="Draft.Questions[index].Required" />
+                    <span>Required</span>
+                </label>
+                @if (Draft.Questions[index].Type == QuestionType.Dropdown)
+                {
+                    <label>
+                        Choices, one per line
+                        <InputTextArea @bind-Value="Draft.Questions[index].Options" />
+                    </label>
+                }
+                <button class="secondary" type="submit" name="Intent" value="remove-@index">Remove question</button>
+            </fieldset>
+        }
+
+        <div class="row-actions">
+            <button class="secondary" type="submit" name="Intent" value="add">Add question</button>
+            <button type="submit" name="Intent" value="save">Save position</button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+
+    [SupplyParameterFromQuery] public string? Uploaded { get; set; }
+
+    [SupplyParameterFromForm(FormName = "position")]
+    private PositionDraft? Draft { get; set; }
+
+    private readonly List<string> _errors = [];
+    private bool Existing => !string.IsNullOrEmpty(Id);
+
+    protected override void OnInitialized()
+    {
+        if (Draft is not null)
+            return;
+
+        if (string.IsNullOrEmpty(Id))
+        {
+            Draft = new PositionDraft { Questions = [new QuestionDraft()] };
+            return;
+        }
+
+        var position = Store.FindPosition(Id);
+        if (position is null)
+        {
+            if (HttpContextAccessor.HttpContext is { } http)
+                http.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        Draft = PositionDraft.From(position);
+    }
+
+    private void Save()
+    {
+        var intent = HttpContextAccessor.HttpContext?.Request.Form["Intent"].ToString() ?? "save";
+        if (Draft is null)
+            return;
+
+        if (intent == "add")
+        {
+            if (Draft.Questions.Count < 30)
+                Draft.Questions.Add(new QuestionDraft());
+            return;
+        }
+
+        if (intent.StartsWith("remove-", StringComparison.Ordinal) &&
+            int.TryParse(intent["remove-".Length..], out var index) &&
+            index >= 0 && index < Draft.Questions.Count)
+        {
+            Draft.Questions.RemoveAt(index);
+            return;
+        }
+
+        _errors.Clear();
+        _errors.AddRange(Draft.Validate());
+        if (_errors.Count > 0)
+            return;
+
+        var id = string.IsNullOrEmpty(Id) ? Guid.NewGuid().ToString("N") : Id;
+        var position = Draft.ToPosition(id);
+        position.UpdatedAt = DateTime.UtcNow;
+        Store.Upsert(position);
+        HttpContextAccessor.HttpContext?.Response.Redirect("/admin");
+    }
+}

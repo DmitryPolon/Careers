@@ -1,0 +1,95 @@
+@page "/account/register"
+@inject ICareersStore Store
+@inject IHttpContextAccessor HttpContextAccessor
+@inject Microsoft.AspNetCore.Identity.PasswordHasher<UserAccount> Passwords
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+
+<PageTitle>Register · AZPCloud Careers</PageTitle>
+
+<h1>Create an account</h1>
+<p class="lead">Use an email you can open. You will sign in with it when you apply.</p>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <p class="error">@_message</p>
+}
+
+<EditForm class="stack" Model="Input" FormName="register" OnValidSubmit="RegisterAccount" Enhance="false">
+    <DataAnnotationsValidator />
+    <label>
+        Email
+        <InputText @bind-Value="Input.Email" autocomplete="email" />
+    </label>
+    <ValidationMessage For="() => Input.Email" />
+    <label>
+        Password
+        <InputText type="password" @bind-Value="Input.Password" autocomplete="new-password" />
+    </label>
+    <ValidationMessage For="() => Input.Password" />
+    <label>
+        Confirm password
+        <InputText type="password" @bind-Value="Input.ConfirmPassword" autocomplete="new-password" />
+    </label>
+    <ValidationMessage For="() => Input.ConfirmPassword" />
+    <button type="submit">Create account</button>
+</EditForm>
+
+<p><a href="/account/login?returnUrl=@Uri.EscapeDataString(LocalUrl.OrHome(ReturnUrl))">Already registered? Sign in</a></p>
+
+@code {
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromForm(FormName = "register")] private RegisterInput Input { get; set; } = new();
+
+    private string? _message;
+
+    private async Task RegisterAccount()
+    {
+        if (!string.Equals(Input.Password, Input.ConfirmPassword, StringComparison.Ordinal))
+        {
+            _message = "The passwords do not match.";
+            return;
+        }
+
+        var email = Input.Email.Trim().ToLowerInvariant();
+        var user = new UserAccount
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Email = email,
+            Role = "Applicant",
+            CreatedAt = DateTime.UtcNow
+        };
+        user.PasswordHash = Passwords.HashPassword(user, Input.Password);
+        if (!Store.AddUser(user))
+        {
+            _message = "That email is already registered. Sign in instead.";
+            return;
+        }
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, user.Id),
+            new(ClaimTypes.Email, user.Email),
+            new(ClaimTypes.Name, user.Email),
+            new(ClaimTypes.Role, user.Role)
+        };
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContextAccessor.HttpContext!.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identity));
+        HttpContextAccessor.HttpContext?.Response.Redirect(LocalUrl.OrHome(ReturnUrl));
+    }
+
+    private sealed class RegisterInput
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required, MinLength(8, ErrorMessage = "Use at least 8 characters.")]
+        public string Password { get; set; } = "";
+
+        [Required]
+        public string ConfirmPassword { get; set; } = "";
+    }
+}

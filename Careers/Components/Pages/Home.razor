@@ -1,0 +1,30 @@
+﻿@page "/"
+@inject ICareersStore Store
+
+<PageTitle>Careers · AZPCloud</PageTitle>
+
+<h1>Open positions</h1>
+<p class="lead">Current roles at AZPCloud.</p>
+
+@if (_positions.Count == 0)
+{
+    <p>There are no open positions right now.</p>
+}
+else
+{
+    <ul class="jobs">
+        @foreach (var position in _positions)
+        {
+            <li class="card">
+                <h2><a href="/jobs/@position.Id">@position.Title</a></h2>
+                <p>@position.Summary</p>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private IReadOnlyList<Position> _positions = [];
+
+    protected override void OnInitialized() => _positions = Store.OpenPositions();
+}

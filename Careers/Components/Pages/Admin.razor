@@ -1,0 +1,78 @@
+@page "/admin"
+@attribute [Authorize(Roles = "Admin")]
+@inject ICareersStore Store
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>Admin · AZPCloud Careers</PageTitle>
+
+<h1>Positions</h1>
+
+<form class="card stack" method="post" action="/admin/positions/upload" enctype="multipart/form-data" data-enhance="false">
+    <AntiforgeryToken />
+    <h2>Upload a job</h2>
+    <p class="muted">Use a Word .docx file. The first line is the title. A line starting with Summary: is the short line on the job list. The paragraphs after that are the description. End with a heading, Screening questions, and a table whose columns are Question, Type, Required, and Choices.</p>
+    <p><a href="/admin/position-template.docx">Download the template</a></p>
+    @if (!string.IsNullOrEmpty(_uploadError))
+    {
+        <p class="error">@_uploadError</p>
+    }
+    <label>
+        Job file
+        <input type="file" name="jobFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required />
+    </label>
+    <button type="submit">Upload</button>
+</form>
+
+<p class="lead"><a class="button secondary" href="/admin/edit">Or type a position</a></p>
+
+@if (_positions.Count == 0)
+{
+    <p>No positions yet.</p>
+}
+else
+{
+    <ul class="jobs">
+        @foreach (var position in _positions)
+        {
+            <li class="card stack">
+                <div class="row-actions">
+                    <h2><a href="/admin/edit/@position.Id">@position.Title</a></h2>
+                    <a href="/jobs/@position.Id">View</a>
+                    <span class="pill @position.Status.ToString().ToLowerInvariant()">@position.Status</span>
+                </div>
+                <p class="muted">@Store.CountApplications(position.Id) application@(Store.CountApplications(position.Id) == 1 ? "" : "s")</p>
+                <form class="row-actions" method="post" action="/admin/positions/@position.Id/status" data-enhance="false">
+                    <AntiforgeryToken />
+                    @if (position.Status != PositionStatus.Open)
+                    {
+                        <button name="status" value="Open">Open</button>
+                    }
+                    @if (position.Status != PositionStatus.Hold)
+                    {
+                        <button class="secondary" name="status" value="Hold">Hold</button>
+                    }
+                    @if (position.Status != PositionStatus.Closed)
+                    {
+                        <button class="secondary" name="status" value="Closed">Close</button>
+                    }
+                </form>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private IReadOnlyList<Position> _positions = [];
+    private string? _uploadError;
+
+    protected override void OnInitialized()
+    {
+        _positions = Store.AllPositions();
+        var http = HttpContextAccessor.HttpContext;
+        if (http?.Request.Cookies["careers-upload-error"] is { Length: > 0 } message)
+        {
+            _uploadError = message;
+            http.Response.Cookies.Delete("careers-upload-error");
+        }
+    }
+}

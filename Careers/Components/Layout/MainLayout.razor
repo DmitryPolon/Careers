@@ -1,0 +1,39 @@
+﻿@inherits LayoutComponentBase
+
+<header class="site">
+    <div class="wrap row">
+        <a class="brand" href="/">AZPCloud Careers</a>
+        <nav>
+            <AuthorizeView Roles="Admin">
+                <Authorized>
+                    <a href="/admin">Positions</a>
+                    <a href="/admin/admins">Administrators</a>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView>
+                <Authorized>
+                    <span class="muted">@context.User.Identity?.Name</span>
+                    <form method="post" action="/account/logout" data-enhance="false">
+                        <AntiforgeryToken />
+                        <button type="submit" class="linkish">Sign out</button>
+                    </form>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="/account/login">Sign in</a>
+                    <a href="/account/register">Register</a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </nav>
+    </div>
+</header>
+
+<main class="wrap">
+    @Body
+    <p class="note">Accounts, positions, and applications are stored in MongoDB.</p>
+</main>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

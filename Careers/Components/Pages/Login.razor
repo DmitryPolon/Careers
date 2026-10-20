@@ -1,0 +1,78 @@
+@page "/account/login"
+@inject ICareersStore Store
+@inject IHttpContextAccessor HttpContextAccessor
+@inject Microsoft.AspNetCore.Identity.PasswordHasher<UserAccount> Passwords
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+
+<PageTitle>Sign in · AZPCloud Careers</PageTitle>
+
+<h1>Sign in</h1>
+<p class="lead">Use the email and password for your application account.</p>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <p class="error">@_message</p>
+}
+
+<EditForm class="stack" Model="Input" FormName="login" OnValidSubmit="SignIn" Enhance="false">
+    <DataAnnotationsValidator />
+    <label>
+        Email
+        <InputText @bind-Value="Input.Email" autocomplete="email" />
+    </label>
+    <ValidationMessage For="() => Input.Email" />
+    <label>
+        Password
+        <InputText type="password" @bind-Value="Input.Password" autocomplete="current-password" />
+    </label>
+    <ValidationMessage For="() => Input.Password" />
+    <button type="submit">Sign in</button>
+</EditForm>
+
+<p><a href="/account/register?returnUrl=@Uri.EscapeDataString(LocalUrl.OrHome(ReturnUrl))">Create an account</a></p>
+
+@code {
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromForm(FormName = "login")] private LoginInput Input { get; set; } = new();
+
+    private string? _message;
+
+    private async Task SignIn()
+    {
+        var email = Input.Email.Trim().ToLowerInvariant();
+        var user = Store.FindUserByEmail(email);
+        var result = user is null
+            ? Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed
+            : Passwords.VerifyHashedPassword(user, user.PasswordHash, Input.Password);
+
+        if (user is null || result == Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed)
+        {
+            _message = "Email or password is incorrect.";
+            return;
+        }
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, user.Id),
+            new(ClaimTypes.Email, user.Email),
+            new(ClaimTypes.Name, user.Email),
+            new(ClaimTypes.Role, user.Role)
+        };
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContextAccessor.HttpContext!.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identity));
+        HttpContextAccessor.HttpContext?.Response.Redirect(LocalUrl.OrHome(ReturnUrl));
+    }
+
+    private sealed class LoginInput
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required]
+        public string Password { get; set; } = "";
+    }
+}
