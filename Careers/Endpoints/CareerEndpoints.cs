@@ -19,6 +19,7 @@ public static class CareerEndpoints
     {
         app.MapPost("/account/logout", Logout);
         app.MapPost("/admin/positions/{id}/status", SetStatus);
+        app.MapPost("/admin/positions/{id}/delete", DeletePosition);
         app.MapPost("/admin/positions/upload", UploadPosition);
         app.MapGet("/admin/position-template.docx", DownloadTemplate);
         app.MapPost("/admin/admins/{id}/notifications", SetNotifications);
@@ -43,6 +44,16 @@ public static class CareerEndpoints
             return Results.Redirect("/admin");
 
         store.SetStatus(id, status);
+        return Results.Redirect("/admin");
+    }
+
+    private static async Task<IResult> DeletePosition(string id, HttpContext http, IAntiforgery antiforgery, ICareersStore store)
+    {
+        await antiforgery.ValidateRequestAsync(http);
+        if (http.User.IsInRole("Admin") is false)
+            return Results.Redirect("/account/login?returnUrl=/admin");
+
+        store.TryDeletePosition(id);
         return Results.Redirect("/admin");
     }
 

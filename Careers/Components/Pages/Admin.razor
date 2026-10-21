@@ -56,6 +56,10 @@ else
                         <button class="secondary" name="status" value="Closed">Close</button>
                     }
                 </form>
+                <form method="post" action="/admin/positions/@position.Id/delete" data-enhance="false">
+                    <AntiforgeryToken />
+                    <button type="submit" class="danger">Remove</button>
+                </form>
             </li>
         }
     </ul>

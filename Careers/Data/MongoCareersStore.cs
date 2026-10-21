@@ -76,6 +76,16 @@ public sealed class MongoCareersStore : ICareersStore
         return result.MatchedCount == 1;
     }
 
+    public bool TryDeletePosition(string id)
+    {
+        var result = _positions.DeleteOne(position => position.Id == id);
+        if (result.DeletedCount != 1)
+            return false;
+
+        _applications.DeleteMany(application => application.PositionId == id);
+        return true;
+    }
+
     public int CountApplications(string positionId) =>
         (int)_applications.CountDocuments(application => application.PositionId == positionId);
 

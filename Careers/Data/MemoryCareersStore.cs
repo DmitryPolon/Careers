@@ -58,6 +58,18 @@ public sealed class MemoryCareersStore : ICareersStore
         }
     }
 
+    public bool TryDeletePosition(string id)
+    {
+        lock (_gate)
+        {
+            if (!_positions.Remove(id))
+                return false;
+
+            _applications.RemoveAll(application => application.PositionId == id);
+            return true;
+        }
+    }
+
     public int CountApplications(string positionId)
     {
         lock (_gate)

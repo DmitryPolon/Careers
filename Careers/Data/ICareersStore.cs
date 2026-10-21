@@ -16,6 +16,8 @@ public interface ICareersStore
 
     bool SetStatus(string id, PositionStatus status);
 
+    bool TryDeletePosition(string id);
+
     int CountApplications(string positionId);
 
     UserAccount? FindUserByEmail(string email);
