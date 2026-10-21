@@ -9,14 +9,15 @@ public static class ApplicationPdf
     public static byte[] Build(Position position, string email, string signatureName, DateTime submittedAt, IReadOnlyList<ApplicationAnswer> answers)
     {
         PdfSharp.PdfSharpLicense.SetAgplLicense();
-        PdfSharp.Fonts.GlobalFontSettings.UseWindowsFontsUnderWindows = true;
+        if (PdfSharp.Fonts.GlobalFontSettings.FontResolver is null)
+            PdfSharp.Fonts.GlobalFontSettings.FontResolver = new EmbeddedFontResolver();
         using var document = new PdfDocument();
         document.Info.Title = position.Title;
         var page = document.AddPage();
         var gfx = XGraphics.FromPdfPage(page);
-        var titleFont = new XFont("Arial", 16, XFontStyleEx.Bold);
-        var labelFont = new XFont("Arial", 11, XFontStyleEx.Bold);
-        var bodyFont = new XFont("Arial", 11);
+        var titleFont = new XFont("Liberation Sans", 16, XFontStyleEx.Bold);
+        var labelFont = new XFont("Liberation Sans", 11, XFontStyleEx.Bold);
+        var bodyFont = new XFont("Liberation Sans", 11);
         double y = 48;
 
         void NewPage()

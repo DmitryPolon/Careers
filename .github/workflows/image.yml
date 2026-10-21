@@ -29,7 +29,3 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/dmitrypolon/careers:latest
-      - name: Make the package public
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh api --method PUT /user/packages/container/careers -f visibility=public
