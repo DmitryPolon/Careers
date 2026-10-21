@@ -14,11 +14,9 @@ public sealed class CareersSeeder(
 
     public void Seed()
     {
-        if (!environment.IsDevelopment())
-            return;
-
         SeedAdmin();
-        SeedSamplePosition();
+        if (environment.IsDevelopment())
+            SeedSamplePosition();
     }
 
     private void SeedAdmin()
@@ -33,11 +31,30 @@ public sealed class CareersSeeder(
             Id = Guid.NewGuid().ToString("N"),
             Email = email,
             Role = "Admin",
-            ReceivesApplications = true,
+            ReceivesApplications = string.IsNullOrWhiteSpace(configuration["SeedAdmin:NotifyEmail"]),
             CreatedAt = DateTime.UtcNow
         };
         admin.PasswordHash = passwords.HashPassword(admin, password);
         store.AddUser(admin);
+        SeedNotify(password);
+    }
+
+    private void SeedNotify(string password)
+    {
+        var email = configuration["SeedAdmin:NotifyEmail"]?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(email) || store.FindUserByEmail(email) is not null)
+            return;
+
+        var notify = new UserAccount
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Email = email,
+            Role = "Admin",
+            ReceivesApplications = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        notify.PasswordHash = passwords.HashPassword(notify, password);
+        store.AddUser(notify);
     }
 
     private void SeedSamplePosition()

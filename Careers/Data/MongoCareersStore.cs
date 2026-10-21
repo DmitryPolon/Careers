@@ -25,18 +25,15 @@ public sealed class MongoCareersStore : ICareersStore
         var connectionString = configuration["Mongo:ConnectionString"] ?? "mongodb://localhost:27017";
         var databaseName = configuration["Mongo:Database"] ?? "careers";
         var client = new MongoClient(connectionString);
+        var database = client.GetDatabase(databaseName);
         try
         {
-            client.GetDatabase("admin").RunCommand<BsonDocument>(new BsonDocument("ping", 1));
+            database.RunCommand<BsonDocument>(new BsonDocument("ping", 1));
         }
         catch (Exception exception)
         {
-            throw new InvalidOperationException(
-                $"MongoDB is not reachable at {connectionString}. Start the careers-mongo container.",
-                exception);
+            throw new InvalidOperationException("MongoDB is not reachable.", exception);
         }
-
-        var database = client.GetDatabase(databaseName);
         _positions = database.GetCollection<Position>("positions");
         _users = database.GetCollection<UserAccount>("users");
         _applications = database.GetCollection<JobApplication>("applications");
