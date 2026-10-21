@@ -2,6 +2,10 @@
 
 Public job list and applications for AZPCloud. An administrator uploads a Word job file, applicants register and apply, and the application PDF plus resume are emailed to the addresses that are marked to receive them.
 
+The live site is https://careers.azpcloud.com. Its database, mail connection, and admin password are set in Azure. They are not in this repository.
+
+A job file can ask for short text, long text, a dropdown, yes/no, or multiple choice. Multiple choice is checkboxes. Separate its choices with semicolons.
+
 ## Run locally
 
 Install the .NET 10 SDK and Docker.
