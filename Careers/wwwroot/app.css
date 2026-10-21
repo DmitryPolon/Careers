@@ -139,6 +139,12 @@ button.secondary, .button.secondary {
     color: var(--accent);
 }
 
+button.danger {
+    background: transparent;
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
 button.linkish {
     background: none;
     border: 0;

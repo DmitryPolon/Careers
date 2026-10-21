@@ -147,6 +147,16 @@ public sealed class MongoCareersStore : ICareersStore
         return result.MatchedCount == 1;
     }
 
+    public bool TryDeleteAdmin(string id)
+    {
+        var user = FindUser(id);
+        if (user is null || user.Role != "Admin" || Admins().Count <= 1)
+            return false;
+
+        var result = _users.DeleteOne(existing => existing.Id == id && existing.Role == "Admin");
+        return result.DeletedCount == 1;
+    }
+
     public IReadOnlyList<string> ApplicationRecipientEmails() =>
         _users.Find(user => user.Role == "Admin" && user.ReceivesApplications)
             .ToList()

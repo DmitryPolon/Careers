@@ -28,6 +28,8 @@ public interface ICareersStore
 
     bool SetReceivesApplications(string id, bool receives);
 
+    bool TryDeleteAdmin(string id);
+
     IReadOnlyList<string> ApplicationRecipientEmails();
 
     JobApplication? FindApplication(string userId, string positionId);

@@ -22,6 +22,7 @@ public static class CareerEndpoints
         app.MapPost("/admin/positions/upload", UploadPosition);
         app.MapGet("/admin/position-template.docx", DownloadTemplate);
         app.MapPost("/admin/admins/{id}/notifications", SetNotifications);
+        app.MapPost("/admin/admins/{id}/delete", DeleteAdmin);
         app.MapPost("/jobs/{id}/apply/submit", Apply);
     }
 
@@ -57,6 +58,32 @@ public static class CareerEndpoints
 
         var receives = string.Equals(http.Request.Form["receives"], "true", StringComparison.OrdinalIgnoreCase);
         store.SetReceivesApplications(id, receives);
+        return Results.Redirect("/admin/admins");
+    }
+
+    private static async Task<IResult> DeleteAdmin(
+        string id,
+        HttpContext http,
+        IAntiforgery antiforgery,
+        ICareersStore store)
+    {
+        await antiforgery.ValidateRequestAsync(http);
+        if (http.User.IsInRole("Admin") is false)
+            return Results.Redirect("/account/login?returnUrl=/admin/admins");
+
+        var removingSelf = string.Equals(
+            http.User.FindFirstValue(ClaimTypes.NameIdentifier),
+            id,
+            StringComparison.Ordinal);
+        if (!store.TryDeleteAdmin(id))
+            return Results.Redirect("/admin/admins?error=last");
+
+        if (removingSelf)
+        {
+            await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return Results.Redirect("/");
+        }
+
         return Results.Redirect("/admin/admins");
     }
 

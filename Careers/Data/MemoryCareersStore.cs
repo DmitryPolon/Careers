@@ -137,6 +137,22 @@ public sealed class MemoryCareersStore : ICareersStore
         }
     }
 
+    public bool TryDeleteAdmin(string id)
+    {
+        lock (_gate)
+        {
+            if (!_usersById.TryGetValue(id, out var user) || user.Role != "Admin")
+                return false;
+
+            if (_usersById.Values.Count(account => account.Role == "Admin") <= 1)
+                return false;
+
+            _usersById.Remove(id);
+            _usersByEmail.Remove(user.Email);
+            return true;
+        }
+    }
+
     public IReadOnlyList<string> ApplicationRecipientEmails()
     {
         lock (_gate)

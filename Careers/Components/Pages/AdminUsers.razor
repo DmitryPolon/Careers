@@ -72,11 +72,20 @@ else
                     <strong>@admin.Email</strong>
                     <p class="muted">@(admin.ReceivesApplications ? "Receives application PDFs" : "Does not receive PDFs")</p>
                 </div>
-                <form method="post" action="/admin/admins/@admin.Id/notifications" data-enhance="false">
-                    <AntiforgeryToken />
-                    <input type="hidden" name="receives" value="@(admin.ReceivesApplications ? "false" : "true")" />
-                    <button type="submit" class="secondary">@(admin.ReceivesApplications ? "Stop PDF email" : "Email PDFs here")</button>
-                </form>
+                <div class="actions">
+                    <form method="post" action="/admin/admins/@admin.Id/notifications" data-enhance="false">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="receives" value="@(admin.ReceivesApplications ? "false" : "true")" />
+                        <button type="submit" class="secondary">@(admin.ReceivesApplications ? "Stop PDF email" : "Email PDFs here")</button>
+                    </form>
+                    @if (_admins.Count > 1)
+                    {
+                        <form method="post" action="/admin/admins/@admin.Id/delete" data-enhance="false">
+                            <AntiforgeryToken />
+                            <button type="submit" class="danger">Remove</button>
+                        </form>
+                    }
+                </div>
             </li>
         }
     </ul>
@@ -95,9 +104,14 @@ else
     private IReadOnlyList<UserAccount> _admins = [];
     private string? _message;
 
+    [SupplyParameterFromQuery(Name = "error")]
+    private string? Error { get; set; }
+
     protected override void OnInitialized()
     {
         _admins = Store.Admins();
+        if (Error == "last")
+            _message = "Keep at least one administrator.";
         var http = HttpContextAccessor.HttpContext;
         if (http is not null && HttpMethods.IsPost(http.Request.Method))
             Input.ReceivesApplications = string.Equals(http.Request.Form["receives"], "true", StringComparison.OrdinalIgnoreCase);
