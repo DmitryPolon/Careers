@@ -12,7 +12,8 @@ public enum QuestionType
     ShortText,
     LongText,
     Dropdown,
-    YesNo
+    YesNo,
+    MultipleChoice
 }
 
 public sealed class ScreeningQuestion
@@ -144,7 +145,7 @@ public sealed class PositionDraft
             Label = question.Label.Trim(),
             Type = question.Type,
             Required = question.Required,
-            Options = question.Type == QuestionType.Dropdown
+            Options = question.Type is QuestionType.Dropdown or QuestionType.MultipleChoice
                 ? question.Options
                     .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Distinct(StringComparer.Ordinal)
@@ -177,6 +178,12 @@ public sealed class PositionDraft
             string.IsNullOrWhiteSpace(question.Options)))
         {
             errors.Add("A dropdown question needs at least one choice.");
+        }
+
+        if (Questions.Any(question => question.Type == QuestionType.MultipleChoice &&
+            string.IsNullOrWhiteSpace(question.Options)))
+        {
+            errors.Add("A multiple choice question needs at least one choice.");
         }
 
         return errors;

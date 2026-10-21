@@ -168,7 +168,7 @@ public static class DocxPositionReader
 
             if (!TryParseType(typeText, out var type))
             {
-                errors.Add($"Row {rowNumber} has an unknown type \"{typeText}\". Use Short text, Long text, Dropdown, or Yes/No.");
+                errors.Add($"Row {rowNumber} has an unknown type \"{typeText}\". Use Short text, Long text, Dropdown, Multiple choice, or Yes/No.");
                 continue;
             }
 
@@ -181,6 +181,8 @@ public static class DocxPositionReader
             var options = SplitChoices(choicesText);
             if (type == QuestionType.Dropdown && options.Count == 0)
                 errors.Add($"Row {rowNumber} is a dropdown and needs choices separated by semicolons.");
+            if (type == QuestionType.MultipleChoice && options.Count == 0)
+                errors.Add($"Row {rowNumber} is multiple choice and needs choices separated by semicolons.");
 
             questions.Add(new ScreeningQuestion
             {
@@ -188,7 +190,7 @@ public static class DocxPositionReader
                 Label = label.Trim(),
                 Type = type,
                 Required = required,
-                Options = type == QuestionType.Dropdown ? options : []
+                Options = type is QuestionType.Dropdown or QuestionType.MultipleChoice ? options : []
             });
         }
 
@@ -237,6 +239,13 @@ public static class DocxPositionReader
             case "select":
             case "list":
                 type = QuestionType.Dropdown;
+                return true;
+            case "multiplechoice":
+            case "multichoice":
+            case "multiselect":
+            case "checkboxes":
+            case "checkbox":
+                type = QuestionType.MultipleChoice;
                 return true;
             case "yesno":
             case "boolean":

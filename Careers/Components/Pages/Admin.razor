@@ -10,7 +10,7 @@
 <form class="card stack" method="post" action="/admin/positions/upload" enctype="multipart/form-data" data-enhance="false">
     <AntiforgeryToken />
     <h2>Upload a job</h2>
-    <p class="muted">Use a Word .docx file. The first line is the title. A line starting with Summary: is the short line on the job list. The paragraphs after that are the description. End with a heading, Screening questions, and a table whose columns are Question, Type, Required, and Choices.</p>
+    <p class="muted">Use a Word .docx file. The first line is the title. A line starting with Summary: is the short line on the job list. The paragraphs after that are the description. End with a heading, Screening questions, and a table whose columns are Question, Type, Required, and Choices. Type can be Short text, Long text, Dropdown, Multiple choice, or Yes/No. Separate choices with semicolons.</p>
     <p><a href="/admin/position-template.docx">Download the template</a></p>
     @if (!string.IsNullOrEmpty(_uploadError))
     {

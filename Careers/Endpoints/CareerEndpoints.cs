@@ -189,7 +189,7 @@ public static class CareerEndpoints
         var answers = new List<ApplicationAnswer>();
         foreach (var question in position.Questions)
         {
-            var value = form[$"answers[{question.Id}]"].ToString().Trim();
+            var value = ReadAnswer(question, form);
             if (value.Length > 4000)
                 value = value[..4000];
 
@@ -269,6 +269,18 @@ public static class CareerEndpoints
         return Results.Redirect($"/jobs/{id}?applied=1");
     }
 
+    private static string ReadAnswer(ScreeningQuestion question, IFormCollection form)
+    {
+        if (question.Type != QuestionType.MultipleChoice)
+            return form[$"answers[{question.Id}]"].ToString().Trim();
+
+        var selected = form[$"answers[{question.Id}]"]
+            .Select(value => value?.Trim() ?? "")
+            .Where(value => value.Length > 0)
+            .ToHashSet(StringComparer.Ordinal);
+        return string.Join("; ", question.Options.Where(option => selected.Contains(option)));
+    }
+
     private static bool AnswerIsValid(ScreeningQuestion question, string value)
     {
         if (question.Required && string.IsNullOrWhiteSpace(value))
@@ -278,6 +290,8 @@ public static class CareerEndpoints
         {
             QuestionType.YesNo => value is "Yes" or "No" || (!question.Required && string.IsNullOrEmpty(value)),
             QuestionType.Dropdown => string.IsNullOrEmpty(value) || question.Options.Contains(value, StringComparer.Ordinal),
+            QuestionType.MultipleChoice => value.Split("; ", StringSplitOptions.RemoveEmptyEntries)
+                .All(option => question.Options.Contains(option, StringComparer.Ordinal)),
             _ => true
         };
     }

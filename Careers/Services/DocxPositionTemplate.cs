@@ -48,6 +48,11 @@ public static class DocxPositionTemplate
             Cell("Yes"),
             Cell("Less than 2; 2 to 5; More than 5")));
         table.Append(new TableRow(
+            Cell("Which of the following technologies have you used professionally?"),
+            Cell("Multiple choice"),
+            Cell("Yes"),
+            Cell("C#/.NET; ASP.NET Core; SQL Server; Microsoft Azure; REST APIs; MongoDB; Other")));
+        table.Append(new TableRow(
             Cell("Why do you want to work at AZPCloud?"),
             Cell("Long text"),
             Cell("Yes"),

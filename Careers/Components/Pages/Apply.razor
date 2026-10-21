@@ -57,6 +57,19 @@ else
                         }
                     </select>
                 }
+                else if (question.Type == QuestionType.MultipleChoice)
+                {
+                    <div class="choices" id="@fieldId">
+                        @foreach (var option in question.Options)
+                        {
+                            <label class="check">
+                                <input type="checkbox" name="answers[@question.Id]" value="@option" />
+                                <span>@option</span>
+                            </label>
+                        }
+                    </div>
+                    <p class="muted">Select all that apply.</p>
+                }
                 else if (question.Type == QuestionType.YesNo)
                 {
                     <select id="@fieldId" name="answers[@question.Id]" required="@question.Required">

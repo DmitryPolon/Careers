@@ -61,6 +61,7 @@
                         <option value="@QuestionType.ShortText">Short text</option>
                         <option value="@QuestionType.LongText">Long text</option>
                         <option value="@QuestionType.Dropdown">Dropdown</option>
+                        <option value="@QuestionType.MultipleChoice">Multiple choice</option>
                         <option value="@QuestionType.YesNo">Yes / No</option>
                     </InputSelect>
                 </label>
@@ -68,7 +69,7 @@
                     <InputCheckbox @bind-Value="Draft.Questions[index].Required" />
                     <span>Required</span>
                 </label>
-                @if (Draft.Questions[index].Type == QuestionType.Dropdown)
+                @if (Draft.Questions[index].Type is QuestionType.Dropdown or QuestionType.MultipleChoice)
                 {
                     <label>
                         Choices, one per line
