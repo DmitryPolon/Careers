@@ -42,12 +42,14 @@ public sealed class MongoCareersStore : ICareersStore
 
     public IReadOnlyList<Position> OpenPositions() =>
         _positions.Find(position => position.Status == PositionStatus.Open)
-            .SortBy(position => position.Title)
+            .ToList()
+            .OrderBy(position => position.Title, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
     public IReadOnlyList<Position> AllPositions() =>
         _positions.Find(FilterDefinition<Position>.Empty)
-            .SortByDescending(position => position.UpdatedAt)
+            .ToList()
+            .OrderByDescending(position => position.UpdatedAt)
             .ToList();
 
     public Position? FindPosition(string id) =>
@@ -134,7 +136,8 @@ public sealed class MongoCareersStore : ICareersStore
 
     public IReadOnlyList<UserAccount> Admins() =>
         _users.Find(user => user.Role == "Admin")
-            .SortBy(user => user.Email)
+            .ToList()
+            .OrderBy(user => user.Email, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
     public bool SetReceivesApplications(string id, bool receives)
