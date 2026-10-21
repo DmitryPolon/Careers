@@ -213,14 +213,20 @@ public static class CareerEndpoints
             return Results.Redirect($"/jobs/{id}?applied=1");
         }
 
-        await mailer.SendApplicationAsync(
-            store.ApplicationRecipientEmails(),
-            position,
-            email,
-            signature,
-            submittedAt,
-            directory,
-            cancellationToken);
+        try
+        {
+            await mailer.SendApplicationAsync(
+                store.ApplicationRecipientEmails(),
+                position,
+                email,
+                signature,
+                submittedAt,
+                directory);
+        }
+        catch (Exception)
+        {
+            // The application is already stored. A mail failure must not turn the submission into an error page.
+        }
 
         return Results.Redirect($"/jobs/{id}?applied=1");
     }

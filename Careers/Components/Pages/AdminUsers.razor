@@ -10,7 +10,11 @@
 <h1>Administrators</h1>
 <p class="lead">Add people who can manage positions, and choose which addresses receive each application PDF and resume.</p>
 
-@if (Mail.Value.IsReady)
+@if (Mail.Value.UsesAzure)
+{
+    <p class="muted">Checked addresses receive each application PDF and resume from @Mail.Value.From.</p>
+}
+else if (Mail.Value.IsReady)
 {
     <p class="muted">Checked addresses receive each application PDF and resume by email.</p>
 }

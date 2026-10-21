@@ -30,6 +30,6 @@ Open http://localhost:5188.
 
 ## Mail
 
-Checked administrator addresses receive each application PDF and resume. On this Windows computer, mail goes out through Outlook when `Mail:Host` is empty. To use SMTP instead, set `Mail:Host`, `Mail:Port`, `Mail:User`, `Mail:Password`, and `Mail:From` in configuration.
+Checked administrator addresses receive each application PDF and resume. Sending uses Azure Communication Services when `Mail:AzureConnectionString` is set. The from address is `jobs@careers.azpcloud.com`. Until that connection string is set, this Windows computer sends through Outlook. SMTP is used instead when `Mail:Host` is set.
 
 Resumes and generated PDFs are saved under `App_Data` and are not stored in MongoDB.

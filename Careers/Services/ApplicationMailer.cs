@@ -1,3 +1,5 @@
+using Azure;
+using Azure.Communication.Email;
 using Careers.Models;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -14,8 +16,7 @@ public sealed class ApplicationMailer(IOptions<MailSettings> options, ILogger<Ap
         string applicantEmail,
         string signatureName,
         DateTime submittedAt,
-        string packetDirectory,
-        CancellationToken cancellationToken)
+        string packetDirectory)
     {
         var addresses = recipients
             .Where(address => !string.IsNullOrWhiteSpace(address))
@@ -31,7 +32,7 @@ public sealed class ApplicationMailer(IOptions<MailSettings> options, ILogger<Ap
         var settings = options.Value;
         if (addresses.Length == 0)
         {
-            await File.WriteAllLinesAsync(Path.Combine(packetDirectory, "recipients.txt"), lines, cancellationToken);
+            await File.WriteAllLinesAsync(Path.Combine(packetDirectory, "recipients.txt"), lines);
             return;
         }
 
@@ -44,8 +45,11 @@ public sealed class ApplicationMailer(IOptions<MailSettings> options, ILogger<Ap
 
         try
         {
-            if (settings.IsReady)
-                await SendSmtpAsync(settings, addresses, subject, body, attachments, cancellationToken);
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            if (settings.UsesAzure)
+                await SendAzureAsync(settings, addresses, subject, body, attachments, timeout.Token);
+            else if (settings.IsReady)
+                await SendSmtpAsync(settings, addresses, subject, body, attachments, timeout.Token);
             else if (OutlookMailbox.IsAvailable)
                 OutlookMailbox.Send(addresses, subject, body, attachments);
             else
@@ -60,7 +64,40 @@ public sealed class ApplicationMailer(IOptions<MailSettings> options, ILogger<Ap
             lines.Add(exception.Message);
         }
 
-        await File.WriteAllLinesAsync(Path.Combine(packetDirectory, "recipients.txt"), lines, cancellationToken);
+        await File.WriteAllLinesAsync(Path.Combine(packetDirectory, "recipients.txt"), lines);
+    }
+
+    private static async Task SendAzureAsync(
+        MailSettings settings,
+        IReadOnlyList<string> addresses,
+        string subject,
+        string body,
+        IReadOnlyList<string> attachments,
+        CancellationToken cancellationToken)
+    {
+        var client = new EmailClient(settings.AzureConnectionString);
+        var recipients = new EmailRecipients(addresses.Select(address => new EmailAddress(address)).ToList());
+        var message = new EmailMessage(settings.From, recipients, new EmailContent(subject) { PlainText = body });
+        foreach (var path in attachments)
+        {
+            var name = Path.GetFileName(path);
+            var bytes = await File.ReadAllBytesAsync(path, cancellationToken);
+            message.Attachments.Add(new EmailAttachment(name, ContentType(name), BinaryData.FromBytes(bytes)));
+        }
+
+        await client.SendAsync(WaitUntil.Completed, message, cancellationToken);
+    }
+
+    private static string ContentType(string fileName)
+    {
+        var extension = Path.GetExtension(fileName);
+        if (extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            return "application/pdf";
+        if (extension.Equals(".docx", StringComparison.OrdinalIgnoreCase))
+            return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        if (extension.Equals(".doc", StringComparison.OrdinalIgnoreCase))
+            return "application/msword";
+        return "application/octet-stream";
     }
 
     private static async Task SendSmtpAsync(

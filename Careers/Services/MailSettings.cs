@@ -10,7 +10,11 @@ public sealed class MailSettings
 
     public string Password { get; set; } = "";
 
-    public string From { get; set; } = "careers@azpcloud.com";
+    public string From { get; set; } = "jobs@careers.azpcloud.com";
+
+    public string AzureConnectionString { get; set; } = "";
+
+    public bool UsesAzure => !string.IsNullOrWhiteSpace(AzureConnectionString);
 
     public bool IsReady => !string.IsNullOrWhiteSpace(Host);
 }
